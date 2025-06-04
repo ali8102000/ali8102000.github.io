@@ -3,16 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Zowar (زُوّار) - تجربة عالمية مع ألعاب</title>
+    <title>Zowar (زُوّار) - تجربة عالمية متكاملة</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <script type="module">
+        // For this prototype, we'll mock Firebase interactions to keep it client-side in a single file.
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
     <!-- Visualization & Content Choices: 
-        - Games Section: Visually distinct cards for each game. Lobbies simulate friend invites/team formation. Ludo/Snakes & Ladders show mock 3D dice. Basketball has a mock shot mechanic. Quiz has mock Q&A UI.
-        - Section Theming: Each main section gets a unique background gradient or prominent accent color.
-        - All existing features (Posts, Stories, Search, Chat, AI features) refined for ultimate polish and consistency with the new section themes.
+        - Firebase: Config included. Mock functions for auth (signInAnonymously) and Firestore (getDoc, setDoc, etc.) to interact with local mockData.
+        - Tutoring Section: Role selection UI (toggle). Teacher view: subject cards, mock "Publish Lesson" button. Student view: subject cards. New subjects: Islamic Studies, Biology. Teacher role now on top.
+        - Section Theming: Distinct background/accent for each section. Home icon is now 🏠. Profile icon is 👤. Messages icon is 💬.
+        - Games Section: Cards now have unique background colors.
+        - Gemini API: AI Caption for posts, AI Smart Replies in chat, AI Bio generation in profile.
+        - All existing features refined. Scrolling behavior improved. Font sizes increased.
     -->
     <style>
         :root {
@@ -33,28 +39,37 @@
             --dark-danger-color-global: #F85149;
 
             /* Section Specific Themes (Light Mode) */
-            --home-bg: linear-gradient(120deg, #E0F7FA 0%, #E1F5FE 100%);
-            --home-accent: var(--accent-secondary-global);
-            --explore-bg: linear-gradient(120deg, #FFF3E0 0%, #FFF8E1 100%);
-            --explore-accent: var(--highlight-gold-global);
-            --games-bg: linear-gradient(120deg, #F3E5F5 0%, #EDE7F6 100%); /* Purpleish for games */
-            --games-accent: #8E44AD; 
-            --profile-bg: linear-gradient(120deg, #E8EAF6 0%, #E3F2FD 100%);
+            --home-bg: linear-gradient(135deg, #E0F7FA 0%, #E8F5E9 100%); 
+            --home-accent: #26A69A; 
+            --explore-bg: linear-gradient(135deg, #FFFDE7 0%, #FFF3E0 100%); 
+            --explore-accent: #FFA000; 
+            --games-bg: linear-gradient(120deg, #4A148C 0%, #7B1FA2 100%); /* Deep Purple for Games */
+            --games-accent: #FFEB3B; /* Bright Yellow for Games Accent */
+            --tutoring-bg: linear-gradient(135deg, #E1F5FE 0%, #E8EAF6 100%); 
+            --tutoring-accent: #5C6BC0; 
+            --profile-bg: linear-gradient(135deg, #E3F2FD 0%, #E8EAF6 100%); 
             --profile-accent: var(--accent-primary-global);
-            --messages-bg: linear-gradient(120deg, #E0F2F1 0%, #E0F7FA 100%);
-            --messages-accent: #00897B; /* Darker Teal for messages */
+            --messages-bg: linear-gradient(135deg, #E0F2F1 0%, #E0F7FA 100%);
+            --messages-accent: #00897B; 
+            --create-post-bg: linear-gradient(135deg, #f0f4f8, #e6e9ed);
+            --create-post-accent: var(--accent-primary-global);
+
 
             /* Section Specific Themes (Dark Mode) */
-            --dark-home-bg: linear-gradient(120deg, #1A222C 0%, #1D2733 100%);
-            --dark-home-accent: var(--dark-accent-secondary-global);
-            --dark-explore-bg: linear-gradient(120deg, #2C2A24 0%, #302D26 100%);
+            --dark-home-bg: linear-gradient(135deg, #1A222C 0%, #1B2F2A 100%);
+            --dark-home-accent: #4DB6AC;
+            --dark-explore-bg: linear-gradient(135deg, #2C2A24 0%, #302D26 100%);
             --dark-explore-accent: var(--dark-highlight-gold-global);
-            --dark-games-bg: linear-gradient(120deg, #2C1D31 0%, #251A2A 100%);
-            --dark-games-accent: #BB86FC;
-            --dark-profile-bg: linear-gradient(120deg, #1F243A 0%, #1A2035 100%);
+            --dark-games-bg: linear-gradient(120deg, #1A001A 0%, #2E0854 100%); /* Darker Purple for Games */
+            --dark-games-accent: #FFF59D; /* Lighter Yellow for Games Accent */
+            --dark-tutoring-bg: linear-gradient(135deg, #1A2233 0%, #1C1F3A 100%); 
+            --dark-tutoring-accent: #9FA8DA; 
+            --dark-profile-bg: linear-gradient(135deg, #1F243A 0%, #1A2035 100%);
             --dark-profile-accent: var(--dark-accent-primary-global);
-            --dark-messages-bg: linear-gradient(120deg, #1A2B2A 0%, #1A2F32 100%);
+            --dark-messages-bg: linear-gradient(135deg, #1A2B2A 0%, #1A2F32 100%);
             --dark-messages-accent: #26A69A;
+            --dark-create-post-bg: linear-gradient(135deg, #1a202c, #2d3748);
+            --dark-create-post-accent: var(--dark-accent-primary-global);
         }
         body { 
             font-family: 'Tajawal', sans-serif; 
@@ -64,8 +79,9 @@
             transition: background-color 0.5s, color 0.5s; 
             font-smooth: antialiased; 
             -webkit-font-smoothing: antialiased; 
+            font-size: 18.5px; 
         }
-        .dark-mode body { /* This class is added to body by JS */
+        .dark-mode body {
             background-color: var(--dark-bg-primary-global);
             color: var(--dark-text-primary-global);
         }
@@ -73,57 +89,47 @@
         .app-container { max-width: 420px; margin: 0 auto; background-color: var(--bg-primary-global); min-height: 100vh; display: flex; flex-direction: column; box-shadow: 0 0 50px rgba(0,0,0,0.08); overflow: hidden; border-radius: 24px; }
         .dark-mode .app-container { background-color: var(--dark-bg-primary-global); }
 
-        .main-content { flex-grow: 1; overflow-y: auto; padding-bottom: 75px; }
+        .main-content { flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; }
         
-        .header-main { padding: 12px 16px; background-color: rgba(255,255,255,0.7); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); box-shadow: 0 2px 8px rgba(0,0,0,0.04); position: sticky; top: 0; z-index: 1000; transition: background-color 0.4s; }
+        .header-main { padding: 14px 18px; background-color: rgba(255,255,255,0.7); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); box-shadow: 0 2px 8px rgba(0,0,0,0.04); position: sticky; top: 0; z-index: 1000; transition: background-color 0.4s; }
         .dark-mode .header-main { background-color: rgba(30,30,30,0.7); }
-        .header-title { color: var(--accent-primary-global); font-weight: 900; font-size: 2.1rem; letter-spacing: -0.75px; }
+        .header-title { color: var(--accent-primary-global); font-weight: 900; font-size: 2.3rem; letter-spacing: -0.75px; } 
         .dark-mode .header-title { color: var(--dark-accent-primary-global); }
-        .header-icon-btn { font-size: 1.8rem; color: var(--text-secondary-global); transition: color 0.25s, transform 0.2s; cursor: pointer; position: relative; }
+        .header-icon-btn { font-size: 1.9rem; color: var(--text-secondary-global); transition: color 0.25s, transform 0.2s; cursor: pointer; position: relative; } 
         .header-icon-btn:hover { color: var(--accent-primary-global); transform: scale(1.12); }
         .dark-mode .header-icon-btn { color: var(--dark-text-secondary-global); }
         .dark-mode .header-icon-btn:hover { color: var(--dark-accent-primary-global); }
-        .unread-badge { position: absolute; top: -5px; right: -7px; background-color: var(--danger-color-global); color: white; font-size: 0.65rem; font-weight: bold; width: 18px; height: 18px; border-radius: 50%; display: flex; justify-content: center; align-items: center; line-height: 1; box-shadow: 0 1px 6px rgba(229,62,62,0.6); }
+        .unread-badge { position: absolute; top: -5px; right: -7px; background-color: var(--danger-color-global); color: white; font-size: 0.7rem; font-weight: bold; width: 20px; height: 20px; border-radius: 50%; display: flex; justify-content: center; align-items: center; line-height: 1; box-shadow: 0 1px 6px rgba(229,62,62,0.6); } 
         .dark-mode .unread-badge { background-color: var(--dark-danger-color-global); }
         
         .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; max-width: 420px; margin: 0 auto; background-color: rgba(255,255,255,0.7); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border-top: 1px solid var(--border-color-global); display: flex; justify-content: space-around; padding: 10px 0; box-shadow: 0 -6px 30px rgba(0,0,0,0.05); z-index: 1000; transition: background-color 0.4s, border-color 0.4s; }
         .dark-mode .bottom-nav { background-color: rgba(30,30,30,0.7); border-top-color: var(--dark-border-color-global); }
         .nav-item { flex: 1; text-align: center; padding: 6px 0; cursor: pointer; color: var(--text-secondary-global); transition: color 0.3s ease-in-out, transform 0.2s ease-in-out; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .nav-item.active .nav-icon { color: var(--active-nav-icon-color, var(--accent-primary-global)); transform: scale(1.2) translateY(-3px); }
-        .nav-item.active .nav-text { color: var(--active-nav-text-color, var(--accent-primary-global)); font-weight: 700; }
-        .dark-mode .nav-item.active .nav-icon { color: var(--active-nav-icon-color-dark, var(--dark-accent-primary-global)); }
-        .dark-mode .nav-item.active .nav-text { color: var(--active-nav-text-color-dark, var(--dark-accent-primary-global)); }
+        .nav-item.active .nav-icon { /* Dynamic color set by JS */ transform: scale(1.2) translateY(-3px); }
+        .nav-item.active .nav-text { /* Dynamic color set by JS */ font-weight: 700; }
         .nav-item:active { transform: scale(0.92); }
-        .nav-icon { font-size: 1.9rem; margin-bottom: 0px; line-height: 1; transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), color 0.3s; } 
-        .nav-text { font-size: 0.65rem; margin-top: 3px; transition: color 0.3s; }
-        .create-post-btn .nav-icon { 
-            font-size: 2.8rem; 
-            color: white; 
-            background: linear-gradient(135deg, var(--accent-primary-global), var(--accent-secondary-global)); 
-            border-radius: 50%; 
-            width: 56px; height: 56px; 
-            display: flex; align-items: center; justify-content: center;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
-            transform: translateY(-10px); /* Elevate button */
-        }
-        .dark-mode .create-post-btn .nav-icon { background: linear-gradient(135deg, var(--dark-accent-primary-global), var(--dark-accent-secondary-global)); }
-        .create-post-btn.active .nav-icon { transform: translateY(-10px) scale(1.1) rotate(135deg); }
-
-        .section, .view { display: none; animation: sectionLoadAnimation 0.7s cubic-bezier(0.165, 0.84, 0.44, 1.0); }
+        .nav-icon { font-size: 2.1rem; margin-bottom: 0px; line-height: 1; transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), color 0.3s; } 
+        .nav-text { font-size: 0.8rem; margin-top: 3px; transition: color 0.3s; } 
+        
+        .section, .view { display: none; animation: sectionLoadAnimation 0.7s cubic-bezier(0.165, 0.84, 0.44, 1.0); flex-grow: 1; overflow-y: auto; } 
         .section.active, .view.active { display: block; }
         @keyframes sectionLoadAnimation { from { opacity: 0; transform: translateY(30px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
         
-        /* Section Specific Backgrounds */
-        #home-section.active { background: var(--home-bg); }
+        /* Section Specific Backgrounds & Text Colors */
+        #home-section.active { background: var(--home-bg); --active-nav-icon-color: var(--home-accent); --active-nav-text-color: var(--home-accent); --active-nav-icon-color-dark: var(--dark-home-accent); --active-nav-text-color-dark: var(--dark-home-accent); }
         .dark-mode #home-section.active { background: var(--dark-home-bg); }
-        #explore-section.active { background: var(--explore-bg); }
+        #explore-section.active { background: var(--explore-bg); --active-nav-icon-color: var(--explore-accent); --active-nav-text-color: var(--explore-accent); --active-nav-icon-color-dark: var(--dark-explore-accent); --active-nav-text-color-dark: var(--dark-explore-accent); }
         .dark-mode #explore-section.active { background: var(--dark-explore-bg); }
-        #games-section.active { background: var(--games-bg); } 
-        .dark-mode #games-section.active { background: var(--dark-games-bg); }
-        #profile-section.active, #other-user-profile-view.active { background: var(--profile-bg); }
+        #tutoring-section.active { background: var(--tutoring-bg); --active-nav-icon-color: var(--tutoring-accent); --active-nav-text-color: var(--tutoring-accent); --active-nav-icon-color-dark: var(--dark-tutoring-accent); --active-nav-text-color-dark: var(--dark-tutoring-accent); } 
+        .dark-mode #tutoring-section.active { background: var(--dark-tutoring-bg); }
+        #profile-section.active, #other-user-profile-view.active { background: var(--profile-bg); --active-nav-icon-color: var(--profile-accent); --active-nav-text-color: var(--profile-accent); --active-nav-icon-color-dark: var(--dark-profile-accent); --active-nav-text-color-dark: var(--dark-profile-accent); }
         .dark-mode #profile-section.active, .dark-mode #other-user-profile-view.active { background: var(--dark-profile-bg); }
-        #messages-view.active { background: var(--messages-bg); }
+        #messages-view.active { background: var(--messages-bg); --active-nav-icon-color: var(--messages-accent); --active-nav-text-color: var(--messages-accent); --active-nav-icon-color-dark: var(--dark-messages-accent); --active-nav-text-color-dark: var(--dark-messages-accent); }
         .dark-mode #messages-view.active { background: var(--dark-messages-bg); }
+        #games-section.active { background: var(--games-bg); --active-nav-icon-color: var(--games-accent); --active-nav-text-color: var(--games-accent); --active-nav-icon-color-dark: var(--dark-games-accent); --active-nav-text-color-dark: var(--dark-games-accent); }
+        .dark-mode #games-section.active { background: var(--dark-games-bg); }
+        #create-post-section.active { background: var(--create-post-bg); --active-nav-icon-color: var(--accent-primary-global); --active-nav-text-color: var(--accent-primary-global); --active-nav-icon-color-dark: var(--dark-accent-primary-global); --active-nav-text-color-dark: var(--dark-accent-primary-global); }
+        .dark-mode #create-post-section.active { background: var(--dark-create-post-bg); }
 
 
         .splash-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(145deg, var(--accent-primary-global), #1A3A91); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 9999; transition: opacity 1s ease-out, visibility 1s ease-out; }
@@ -228,7 +234,7 @@
             position: fixed;
             top: 80px; 
             left: 50%;
-            transform: translateX(-50%) translateY(-100px); /* Start off-screen */
+            transform: translateX(-50%) translateY(-100px); 
             background-color: var(--accent-secondary-global);
             color: white;
             padding: 14px 22px;
@@ -264,6 +270,73 @@
         .dark-mode .smart-reply-btn:hover {
             background-color: #4A7EE0; /* Darker blue for dark mode */
         }
+        .tutoring-card {
+            background-color: var(--bg-content);
+            border-radius: 18px; 
+            padding: 24px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.06);
+            text-align: center;
+            transition: transform 0.35s ease, box-shadow 0.35s ease;
+            cursor: pointer;
+            border: 1px solid var(--border-color-global);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 160px; 
+        }
+        .dark-mode .tutoring-card { background-color: var(--dark-bg-content); box-shadow: 0 8px 25px rgba(0,0,0,0.16); border-color: var(--dark-border-color-global); }
+        .tutoring-card:hover { transform: translateY(-6px) scale(1.04); box-shadow: 0 12px 35px rgba(0,0,0,0.09); }
+        .tutoring-card-icon { font-size: 3rem; margin-bottom: 14px; line-height: 1; color: var(--tutoring-accent); } 
+        .dark-mode .tutoring-card-icon { color: var(--dark-tutoring-accent); }
+        .tutoring-card h3 { font-weight: 800; font-size: 1.2rem; color: var(--text-primary-global); } 
+        .dark-mode .tutoring-card h3 { color: var(--dark-text-primary-global); }
+        .tutoring-role-btn {
+            padding: 16px 24px;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.3s, color 0.3s;
+            width: 100%;
+        }
+        .tutoring-role-btn:hover { transform: translateY(-3px); box-shadow: 0 6px 15px rgba(0,0,0,0.1); }
+        .tutoring-role-toggle-btn { 
+             border: 2px solid transparent;
+        }
+        .tutoring-role-toggle-btn.active-role {
+            background-color: var(--tutoring-accent) !important;
+            color: white !important;
+            border-color: var(--tutoring-accent) !important;
+        }
+        .dark-mode .tutoring-role-toggle-btn.active-role {
+             background-color: var(--dark-tutoring-accent) !important;
+             color: var(--dark-bg-primary) !important;
+             border-color: var(--dark-tutoring-accent) !important;
+        }
+        .game-card {
+            background-color: var(--bg-content);
+            border-radius: 18px; 
+            padding: 24px; 
+            box-shadow: 0 8px 25px rgba(0,0,0,0.06);
+            text-align: center;
+            transition: transform 0.35s ease, box-shadow 0.35s ease;
+            cursor: pointer;
+            border: 1px solid var(--border-color-global);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 160px; 
+        }
+        .dark-mode .game-card { background-color: var(--dark-bg-content); box-shadow: 0 8px 25px rgba(0,0,0,0.16); border-color: var(--dark-border-color-global); }
+        .game-card:hover { transform: translateY(-6px) scale(1.04); box-shadow: 0 12px 35px rgba(0,0,0,0.09); }
+        .game-card-icon { font-size: 3.5rem; margin-bottom: 18px; line-height: 1; } 
+        .game-card h3 { font-weight: 800; font-size: 1.3rem; color: var(--text-primary-global); margin-bottom: 8px; } 
+        .dark-mode .game-card h3 { color: var(--dark-text-primary-global); }
+         .game-card p { font-size: 0.9rem; color: var(--text-secondary-global); } 
+        .dark-mode .game-card p { color: var(--dark-text-secondary-global); }
+
+
     </style>
 </head>
 <body class="dark-mode"> 
@@ -275,12 +348,12 @@
 
     <div class="app-container">
         <header class="header-main">
-            <div class="flex justify-between items-center">
+             <div class="flex justify-between items-center">
                 <h1 class="header-title">Zowar</h1>
                 <div class="flex items-center space-x-5 rtl:space-x-reverse">
                     <button id="open-search-modal-btn" class="header-icon-btn search-btn">⌕</button> 
                     <button id="messages-header-btn" class="header-icon-btn messages-btn">
-                        📨
+                        💬
                         <span id="unread-messages-badge" class="unread-badge" style="display: none;">0</span>
                     </button> 
                 </div>
@@ -291,105 +364,154 @@
             <section id="home-section" class="section active p-0">
                 <div class="p-4">
                     <div class="flex justify-between items-center mb-3">
-                        <h2 class="text-lg font-bold text-gray-800 dark:text-gray-200">القصص</h2>
-                        <span class="text-xs text-[var(--accent-secondary-global)] font-semibold cursor-pointer hover:underline">شاهد الكل</span>
+                        <h2 class="text-xl font-bold text-gray-800 dark:text-gray-200">القصص</h2>
+                        <span class="text-sm font-semibold cursor-pointer hover:underline" style="color: var(--home-accent);">شاهد الكل</span>
                     </div>
                     <div id="stories-container" class="flex space-x-3 rtl:space-x-reverse overflow-x-auto pb-3 -mx-4 px-4">
                         </div>
+                </div>
+                <div class="px-4">
+                    <button id="trigger-create-post-btn" class="btn btn-primary w-full mb-4 text-lg">📝 إنشاء منشور جديد</button>
                 </div>
                 <div id="posts-feed" class="px-2 sm:px-0">
                 </div>
             </section>
 
             <section id="explore-section" class="section p-4">
-                <h2 class="text-xl font-bold text-gray-800 dark:text-gray-200 mb-5">استكشف</h2>
-                <div class="mb-6 p-5 rounded-xl shadow-xl bg-gradient-to-r from-[var(--accent-secondary-global)] to-[var(--accent-primary-global)] text-white cursor-pointer transition-transform hover:scale-[1.02]" id="find-nearby-people-card">
-                    <h3 class="text-lg font-bold mb-1">الأشخاص القريبون 📍</h3>
-                    <p class="text-xs opacity-80">اكتشف وتواصل مع مستخدمي Zowar في محيطك.</p>
+                <h2 class="text-2xl font-extrabold text-gray-800 dark:text-gray-200 mb-6">استكشف عوالم Zowar</h2>
+                <div class="mb-6 p-6 rounded-xl shadow-xl bg-gradient-to-r from-[var(--accent-secondary-global)] to-[var(--accent-primary-global)] text-white cursor-pointer transition-transform hover:scale-[1.02]" id="find-nearby-people-card">
+                    <h3 class="text-xl font-bold mb-1">الأشخاص القريبون 📍</h3>
+                    <p class="text-sm opacity-80">اكتشف وتواصل مع مستخدمي Zowar في محيطك الآن.</p>
                 </div>
                 <div id="nearby-people-results" class="mb-8" style="display:none;">
                     <div class="loading-indicator border-top-[var(--accent-primary-global)]"></div>
-                    <p class="text-center text-sm text-gray-500 dark:text-gray-400">جاري البحث عن أشخاص قريبين...</p>
+                    <p class="text-center text-md text-gray-500 dark:text-gray-400">جاري البحث عن أشخاص قريبين...</p>
                     <div id="nearby-users-list" class="mt-4 space-y-3"></div>
                 </div>
                 
                 <div class="mb-8">
-                    <h3 class="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-3"> Zowar Spaces <span class="text-xs px-2 py-0.5 bg-[var(--highlight-gold-global)] text-black rounded-full align-middle shadow-sm">مباشر</span></h3>
+                    <h3 class="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-4"> Zowar Spaces <span class="text-sm px-2.5 py-1 bg-[var(--highlight-gold-global)] text-black rounded-full align-middle shadow-sm">مباشر</span></h3>
                     <div id="zowar-spaces-container" class="space-y-4"></div>
                 </div>
 
                 <div>
-                    <h3 class="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-3">الغرف الجغرافية</h3>
-                    <div id="geo-rooms-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6"></div>
-                    <div class="mt-6 p-5 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
-                        <h4 class="font-bold text-md text-[var(--accent-secondary-global)] dark:text-[var(--dark-accent-secondary-global)] mb-2">✨ أفكار لبدء المحادثة</h4>
-                        <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                    <h3 class="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-4">الغرف الجغرافية</h3>
+                    <div id="geo-rooms-grid" class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6"></div>
+                    <div class="mt-6 p-6 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700">
+                        <h4 class="font-bold text-lg text-[var(--accent-secondary-global)] dark:text-[var(--dark-accent-secondary-global)] mb-2">✨ أفكار لبدء المحادثة</h4>
+                        <p class="text-md text-gray-600 dark:text-gray-400 mb-4">
                             تحتاج إلهام؟ دع الذكاء الاصطناعي يقترح مواضيع شيقة!
                         </p>
-                        <button id="generate-icebreakers-btn" class="btn btn-secondary w-full text-sm">
+                        <button id="generate-icebreakers-btn" class="btn btn-secondary w-full text-md">
                             💡 اقترح مواضيع الآن
                         </button>
                         <div id="loading-gemini" class="mt-4 text-center" style="display: none;">
                             <div class="loading-indicator border-top-[var(--accent-secondary-global)]"></div>
-                            <p class="text-xs text-gray-500 dark:text-gray-400">جاري توليد الأفكار...</p>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">جاري توليد الأفكار...</p>
                         </div>
-                        <div id="icebreakers-suggestions" class="mt-5 text-sm space-y-3"></div>
-                        <p id="gemini-error-message" class="mt-3 text-xs text-red-500 dark:text-red-400" style="display: none;"></p>
+                        <div id="icebreakers-suggestions" class="mt-5 text-md space-y-3"></div>
+                        <p id="gemini-error-message" class="mt-3 text-sm text-red-500 dark:text-red-400" style="display: none;"></p>
                     </div>
                 </div>
             </section>
-
+            
             <section id="games-section" class="section p-4">
-                <h2 class="text-2xl font-extrabold text-gray-800 dark:text-gray-200 mb-6 text-center" style="color: var(--games-accent);">Zowar Play 🎮</h2>
-                <div class="grid grid-cols-2 gap-5">
-                    <div class="game-card" data-game="ludo">
-                        <div class="game-card-icon">🎲</div>
+                 <h2 class="text-3xl font-black text-gray-800 dark:text-gray-100 mb-8 text-center" style="color: var(--games-accent);">Zowar Play 🎮</h2>
+                <div class="grid grid-cols-2 gap-6">
+                    <div class="game-card" data-game="ludo" style="background-color: #FFEBEE; --games-accent-card: #D32F2F;">
+                        <div class="game-card-icon" style="color: var(--games-accent-card);">🎲</div>
                         <h3>يلا لودو</h3>
                         <p>كلاسيكية ممتعة</p>
                     </div>
-                    <div class="game-card" data-game="dominoes">
-                        <div class="game-card-icon" style="font-family: 'Arial Unicode MS', 'Lucida Sans Unicode', 'sans-serif'; font-size: 2.5rem;"> domino </div>
+                    <div class="game-card" data-game="dominoes" style="background-color: #E8EAF6; --games-accent-card: #303F9F;">
+                        <div class="game-card-icon" style="font-family: 'Arial Unicode MS', 'Lucida Sans Unicode', 'sans-serif'; font-size: 2.8rem; color: var(--games-accent-card);"> Domino</div>
                         <h3>دومينو</h3>
                         <p>تحدي وتركيز</p>
                     </div>
-                    <div class="game-card" data-game="snakes-ladders">
-                        <div class="game-card-icon">🐍</div>
+                    <div class="game-card" data-game="snakes-ladders" style="background-color: #E8F5E9; --games-accent-card: #388E3C;">
+                        <div class="game-card-icon" style="color: var(--games-accent-card);">🐍</div>
                         <h3>حية ودرج</h3>
                         <p>حظ ومرح</p>
                     </div>
-                    <div class="game-card" data-game="basketball">
-                        <div class="game-card-icon">🏀</div>
+                    <div class="game-card" data-game="basketball" style="background-color: #FFF3E0; --games-accent-card: #F57C00;">
+                        <div class="game-card-icon" style="color: var(--games-accent-card);">🏀</div>
                         <h3>رميات السلة</h3>
                         <p>اختبر دقتك</p>
                     </div>
-                    <div class="game-card" data-game="quiz">
-                        <div class="game-card-icon">❓</div>
+                    <div class="game-card" data-game="quiz" style="background-color: #E1F5FE; --games-accent-card: #0288D1;">
+                        <div class="game-card-icon" style="color: var(--games-accent-card);">❓</div>
                         <h3>أسئلة عامة</h3>
                         <p>تحدي المعلومات</p>
                     </div>
-                     <div class="game-card" data-game="challenges">
-                        <div class="game-card-icon">🏆</div>
+                     <div class="game-card" data-game="challenges" style="background-color: #FFFDE7; --games-accent-card: #FBC02D;">
+                        <div class="game-card-icon" style="color: var(--games-accent-card);">🏆</div>
                         <h3>تحديات Zowar</h3>
                         <p>أثبت مهارتك</p>
                     </div>
                 </div>
             </section>
             
-            <section id="game-lobby-view" class="view p-4" style="background: var(--games-bg);">
-                <button id="back-to-games-list-btn" class="mb-4 text-sm font-semibold" style="color: var(--games-accent);">❮ العودة للألعاب</button>
-                <h2 id="game-lobby-title" class="text-2xl font-bold text-center mb-6" style="color: var(--games-accent);"></h2>
-                <div id="game-specific-ui" class="mb-6 p-4 bg-white/80 dark:bg-black/50 backdrop-blur-sm rounded-xl"></div>
-                <div class="bg-white/80 dark:bg-black/50 backdrop-blur-sm p-4 rounded-lg shadow-md">
-                    <h3 class="text-lg font-semibold mb-3 text-gray-800 dark:text-gray-100">اللعب مع الأصدقاء (4 لاعبين)</h3>
-                    <div id="game-lobby-players" class="space-y-2 mb-4">
+            <section id="game-lobby-view" class="view p-6" style="background: var(--games-bg);">
+                <button id="back-to-games-list-btn" class="mb-6 text-md font-semibold flex items-center" style="color: var(--games-accent);">❮ <span class="mr-1">العودة للألعاب</span></button>
+                <h2 id="game-lobby-title" class="text-3xl font-bold text-center mb-8" style="color: var(--games-accent);"></h2>
+                <div id="game-specific-ui" class="mb-8 p-5 bg-white/80 dark:bg-black/50 backdrop-blur-md rounded-xl shadow-lg"></div>
+                <div class="bg-white/80 dark:bg-black/50 backdrop-blur-md p-5 rounded-lg shadow-xl">
+                    <h3 class="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-100">اللعب مع الأصدقاء (4 لاعبين)</h3>
+                    <div id="game-lobby-players" class="space-y-3 mb-5">
                         </div>
-                    <div class="flex space-x-2 rtl:space-x-reverse">
-                        <button class="btn btn-secondary flex-1 text-sm" style="background-color: var(--games-accent);">➕ دعوة صديق</button>
-                        <button class="btn btn-primary flex-1 text-sm" style="background-color: var(--accent-primary-global);">🚀 ابدأ اللعب!</button>
+                    <div class="flex space-x-3 rtl:space-x-reverse">
+                        <button class="btn btn-secondary flex-1 text-md" style="background-color: var(--games-accent);">➕ دعوة صديق</button>
+                        <button class="btn btn-primary flex-1 text-md" style="background-color: var(--accent-primary-global);">🚀 ابدأ اللعب!</button>
                     </div>
                 </div>
             </section>
 
+            <section id="tutoring-section" class="section p-6">
+                 <h2 class="text-3xl font-black text-gray-800 dark:text-gray-100 mb-8 text-center" style="color: var(--tutoring-accent);">مركز Zowar التعليمي 📚</h2>
+                 <div id="tutoring-role-selection" class="space-y-5 mb-8">
+                    <div class="flex items-center justify-center p-1 bg-gray-200 dark:bg-gray-700 rounded-xl">
+                        <button id="iam-teacher-btn" class="tutoring-role-toggle-btn flex-1 py-3 px-4 rounded-lg text-md font-semibold transition-all duration-300">أنا مدرس</button>
+                        <button id="iam-student-btn" class="tutoring-role-toggle-btn flex-1 py-3 px-4 rounded-lg text-md font-semibold transition-all duration-300 active-role">أنا طالب</button>
+                    </div>
+                 </div>
+
+                 <div id="tutoring-student-view" style="display:none;">
+                    <h3 class="text-xl font-bold mb-5 text-center text-gray-700 dark:text-gray-300">اختر المادة الدراسية:</h3>
+                    <div class="grid grid-cols-2 gap-5">
+                        <div class="tutoring-card" data-subject="math"> <div class="tutoring-card-icon">🧮</div> <h3>الرياضيات</h3> </div>
+                        <div class="tutoring-card" data-subject="science"> <div class="tutoring-card-icon">🔬</div> <h3>العلوم</h3> </div>
+                        <div class="tutoring-card" data-subject="arabic"> <div class="tutoring-card-icon" style="font-size: 2.5rem;">ب</div> <h3>اللغة العربية</h3> </div>
+                        <div class="tutoring-card" data-subject="history"> <div class="tutoring-card-icon">📜</div> <h3>التاريخ</h3> </div>
+                        <div class="tutoring-card" data-subject="geography"> <div class="tutoring-card-icon">🌍</div> <h3>الجغرافيا</h3> </div>
+                        <div class="tutoring-card" data-subject="english"> <div class="tutoring-card-icon" style="font-size: 2.5rem;">Aa</div> <h3>اللغة الإنجليزية</h3> </div>
+                        <div class="tutoring-card" data-subject="islamic"> <div class="tutoring-card-icon">🕌</div> <h3>إسلامية</h3> </div>
+                        <div class="tutoring-card" data-subject="biology"> <div class="tutoring-card-icon">🧬</div> <h3>أحياء</h3> </div>
+                    </div>
+                 </div>
+
+                 <div id="tutoring-teacher-view" style="display:none;">
+                    <h3 class="text-xl font-bold mb-5 text-center text-gray-700 dark:text-gray-300">اختر تخصصك للتدريس:</h3>
+                    <div id="teacher-subject-selection" class="grid grid-cols-2 gap-5 mb-6">
+                        <div class="tutoring-card" data-subject="math"> <div class="tutoring-card-icon">🧮</div> <h3>الرياضيات</h3> </div>
+                        <div class="tutoring-card" data-subject="science"> <div class="tutoring-card-icon">🔬</div> <h3>العلوم</h3> </div>
+                        <div class="tutoring-card" data-subject="arabic"> <div class="tutoring-card-icon" style="font-size: 2.5rem;">ب</div> <h3>اللغة العربية</h3> </div>
+                        <div class="tutoring-card" data-subject="history"> <div class="tutoring-card-icon">📜</div> <h3>التاريخ</h3> </div>
+                        <div class="tutoring-card" data-subject="geography"> <div class="tutoring-card-icon">🌍</div> <h3>الجغرافيا</h3> </div>
+                        <div class="tutoring-card" data-subject="english"> <div class="tutoring-card-icon" style="font-size: 2.5rem;">Aa</div> <h3>اللغة الإنجليزية</h3> </div>
+                        <div class="tutoring-card" data-subject="islamic"> <div class="tutoring-card-icon">🕌</div> <h3>إسلامية</h3> </div>
+                        <div class="tutoring-card" data-subject="biology"> <div class="tutoring-card-icon">🧬</div> <h3>أحياء</h3> </div>
+                    </div>
+                    <div id="teacher-publish-lesson-area" style="display:none;" class="mt-6 p-6 bg-white dark:bg-gray-800 rounded-xl shadow-xl">
+                        <h4 id="teacher-selected-subject" class="text-lg font-semibold mb-4 text-center" style="color: var(--tutoring-accent);"></h4>
+                        <button class="btn btn-primary w-full text-md">➕ نشر درس جديد</button>
+                    </div>
+                 </div>
+
+                 <div id="tutoring-subject-details" class="mt-8 p-6 bg-white dark:bg-gray-800 rounded-xl shadow-xl" style="display:none;">
+                    <h3 id="tutoring-subject-title" class="text-xl font-bold mb-3 text-center" style="color: var(--tutoring-accent);"></h3>
+                    <p id="tutoring-subject-content" class="text-md text-gray-700 dark:text-gray-300 text-center leading-relaxed"></p>
+                 </div>
+            </section>
 
             <section id="create-post-section" class="section p-4 flex flex-col items-center justify-center">
                 <div class="w-full max-w-md bg-white dark:bg-gray-800 p-6 rounded-xl shadow-2xl">
@@ -474,19 +596,19 @@
 
         <nav class="bottom-nav">
             <div class="nav-item active" data-section="home-section">
-                <div class="nav-icon"> गृह </div> <span class="nav-text">الرئيسية</span>
+                <div class="nav-icon">🏠</div> <span class="nav-text">الرئيسية</span>
             </div>
             <div class="nav-item" data-section="explore-section">
                 <div class="nav-icon">✨</div> <span class="nav-text">استكشف</span>
             </div>
-            <div class="nav-item create-post-btn" data-section="create-post-section">
-                <div class="nav-icon">⊕</div> 
-            </div>
             <div class="nav-item" data-section="games-section">
                 <div class="nav-icon">🎮</div> <span class="nav-text">ألعاب</span>
             </div>
+            <div class="nav-item" data-section="tutoring-section">
+                <div class="nav-icon">📚</div> <span class="nav-text">تدريس</span>
+            </div>
             <div class="nav-item" data-section="profile-section" data-user-id="currentUser"> 
-                <div class="nav-icon">◉</div> <span class="nav-text">ملفي</span>
+                <div class="nav-icon">👤</div> <span class="nav-text">ملفي</span>
             </div>
         </nav>
     </div>
@@ -505,16 +627,21 @@
                     </button>
                 </div>
                 <div class="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                    <label for="sound-toggle" class="text-gray-700 dark:text-gray-300 text-sm font-medium">الأصوات التفاعلية</label>
+                    <button id="sound-toggle" class="w-14 h-7 bg-gray-300 dark:bg-gray-600 rounded-full p-1 flex items-center transition-colors duration-300 ease-in-out focus:outline-none ring-2 ring-transparent focus:ring-[var(--accent-primary-global)]">
+                        <span class="w-5 h-5 bg-white rounded-full shadow-md transform transition-transform duration-300 ease-in-out translate-x-0"></span>
+                    </button>
+                </div>
+                <div class="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                    <label class="block text-gray-700 dark:text-gray-300 text-sm font-medium mb-2">دورك في قسم التدريس:</label>
+                    <div class="flex items-center justify-center p-1 bg-gray-200 dark:bg-gray-600 rounded-xl">
+                        <button id="role-teacher-settings-btn" class="tutoring-role-toggle-btn flex-1 py-2 px-3 rounded-lg text-xs font-semibold transition-all duration-300">مدرس</button>
+                        <button id="role-student-settings-btn" class="tutoring-role-toggle-btn flex-1 py-2 px-3 rounded-lg text-xs font-semibold transition-all duration-300 active-role">طالب</button>
+                    </div>
+                </div>
+                <div class="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
                     <span class="text-gray-700 dark:text-gray-300 text-sm font-medium">إشعارات الرسائل</span>
                     <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-green-100 text-green-700 dark:bg-green-700 dark:text-green-100">مفعلة</span>
-                </div>
-                 <div class="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                    <span class="text-gray-700 dark:text-gray-300 text-sm font-medium">إشعارات المكالمات</span>
-                     <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-green-100 text-green-700 dark:bg-green-700 dark:text-green-100">مفعلة</span>
-                </div>
-                 <div class="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                    <span class="text-gray-700 dark:text-gray-300 text-sm font-medium">جودة تحميل الصور</span>
-                     <span class="text-xs text-gray-500 dark:text-gray-400">عالية</span>
                 </div>
             </div>
             <button class="mt-10 w-full btn btn-primary">حفظ التغييرات</button>
@@ -583,8 +710,40 @@
 
 
     <script>
+        // Firebase Config (Provided by user - For a real app, keep this secure)
+        const firebaseConfig = {
+            apiKey: "AIzaSyCPIcg7RFGlslmgiO0C0miuYztPaxB5S2U", 
+            authDomain: "zowar-a9c69.firebaseapp.com",
+            databaseURL: "https://zowar-a9c69-default-rtdb.firebaseio.com",
+            projectId: "zowar-a9c69",
+            storageBucket: "zowar-a9c69.appspot.com", 
+            messagingSenderId: "200949324467",
+            appId: "1:200949324467:web:54e03ed49857e0af7caec6",
+            measurementId: "G-XBMY1KN43S"
+        };
+
+        // Mock Firebase SDK for single-file prototype
+        const mockFirebase = {
+            initializeApp: (config) => { console.log("Firebase Mock Initialized:", config); return { name: "[DEFAULT]" }; },
+            getAuth: () => ({ currentUser: { uid: "mockUserId", isAnonymous: true }, signInAnonymously: () => Promise.resolve({ user: { uid: "mockUserId", isAnonymous: true } }) }),
+            getFirestore: () => ({
+                doc: (db, path, id) => ({ path: `${path}/${id}` }),
+                collection: (db, path) => ({ path }),
+                getDoc: (docRef) => Promise.resolve({ exists: () => true, data: () => mockFirebase.mockDbData[docRef.path.split('/').pop()] || {} }), 
+                setDoc: (docRef, data) => { console.log("Mock Firestore Set:", docRef.path, data); mockFirebase.mockDbData[docRef.path.split('/').pop()] = data; return Promise.resolve(); },
+                addDoc: (collRef, data) => { const id = `mockDoc${Object.keys(mockFirebase.mockDbData).length}`; mockFirebase.mockDbData[id] = data; console.log("Mock Firestore Add:", collRef.path, id, data); return Promise.resolve({ id }); },
+                onSnapshot: (query, callback) => { console.log("Mock onSnapshot registered for:", query.path); setTimeout(() => callback({ docs: Object.values(mockFirebase.mockDbData).map(d => ({ id: d.id || "mockId", data: () => d })) }), 100); return () => {}; }, 
+            }),
+            getAnalytics: () => ({ logEvent: (name, params) => console.log("Mock Analytics Event:", name, params) }),
+            mockDbData: {} 
+        };
+
+        const app = mockFirebase.initializeApp(firebaseConfig);
+        const auth = mockFirebase.getAuth();
+        const db = mockFirebase.getFirestore();
+        
         document.addEventListener('DOMContentLoaded', () => {
-            // --- Element Selectors (Consolidated) ---
+            // --- Element Selectors ---
             const getEl = (id) => document.getElementById(id);
             const querySelAll = (sel) => document.querySelectorAll(sel);
 
@@ -614,6 +773,10 @@
             const settingsModal = getEl('settings-modal');
             const closeSettingsModalBtn = getEl('close-settings-modal');
             const darkModeToggleBtn = getEl('dark-mode-toggle');
+            const soundToggleBtn = getEl('sound-toggle');
+            const soundToggleSpan = soundToggleBtn ? soundToggleBtn.querySelector('span') : null;
+            const roleTeacherSettingsBtn = getEl('role-teacher-settings-btn');
+            const roleStudentSettingsBtn = getEl('role-student-settings-btn');
             
             const callBtn = getEl('call-btn');
             const callingScreen = getEl('calling-screen');
@@ -643,6 +806,8 @@
             const alertBanner = getEl('alert-banner');
             const alertMessage = getEl('alert-message');
 
+            const triggerCreatePostBtn = getEl('trigger-create-post-btn'); 
+            const createPostSection = getEl('create-post-section'); 
             const createPostStep1 = getEl('create-post-step1');
             const createPostStep2 = getEl('create-post-step2');
             const mediaUploadInput = getEl('media-upload');
@@ -664,7 +829,7 @@
             const nearbyUsersList = getEl('nearby-users-list');
             const storiesContainer = getEl('stories-container') || querySelAll('#home-section .overflow-x-auto')[0];
             const zowarSpacesContainer = getEl('zowar-spaces-container') || querySelAll('#explore-section .mb-8 .space-y-4')[0];
-            const geoRoomsGrid = getEl('geo-rooms-grid') || querySelAll('#explore-section > div:last-child .grid')[0]; // Adjusted selector
+            const geoRoomsGrid = getEl('geo-rooms-grid') || querySelAll('#explore-section > div:last-child .grid')[0]; 
             const activeUsersMessagesContainer = getEl('active-users-messages-container');
 
             const gamesSection = getEl('games-section');
@@ -673,6 +838,19 @@
             const gameSpecificUI = getEl('game-specific-ui');
             const gameLobbyPlayers = getEl('game-lobby-players');
             const backToGamesListBtn = getEl('back-to-games-list-btn');
+            
+            const tutoringSection = getEl('tutoring-section');
+            const tutoringRoleSelection = getEl('tutoring-role-selection');
+            const iamStudentBtn = getEl('iam-student-btn');
+            const iamTeacherBtn = getEl('iam-teacher-btn');
+            const tutoringStudentView = getEl('tutoring-student-view');
+            const tutoringTeacherView = getEl('tutoring-teacher-view');
+            const teacherSubjectSelection = getEl('teacher-subject-selection');
+            const teacherPublishLessonArea = getEl('teacher-publish-lesson-area');
+            const teacherSelectedSubjectEl = getEl('teacher-selected-subject');
+            const tutoringSubjectDetails = getEl('tutoring-subject-details');
+            const tutoringSubjectTitle = getEl('tutoring-subject-title');
+            const tutoringSubjectContent = getEl('tutoring-subject-content');
 
 
             let isRecording = false;
@@ -680,11 +858,13 @@
             let voiceRecordSeconds = 0;
             let currentOpenPostIdForComment = null; 
             let unreadMessagesCount = 3; 
+            let soundsEnabled = true; 
+            let currentTutoringRole = 'student'; 
 
             let uiClickSynth, notificationSynth, messageSendSynth, callRingingSynth, callingProgressSynth, postSentSynth, gameSelectSynth, diceRollSynth, basketballShootSynth, quizCorrectSynth, quizWrongSynth;
             const masterVolume = -18; 
 
-            // --- Mock Data (Moved to top for early access) ---
+            // --- Mock Data ---
             const mockUsers = [
                 { id: "currentUser", username: "zawar_king", displayName: "ملك الزوار", avatar: "https://source.unsplash.com/random/100x100?king,man,handsome", bio: "أعيش الحياة بلحظاتها، أشارككم إبداعاتي وتجاربي الفريدة. Zowar هو عالمي!", postsCount: 152, followers: 2580, following: 310, comments: [ {postId: 1, text: "إبداع لا يوصف!"}, {postId:2, text: "هذا ما نحتاجه تماماً."} ] },
                 { id: "user2", username: "explorer_ali", displayName: "علي المستكشف", avatar: "https://source.unsplash.com/random/100x100?man,traveler,adventure", bio: "رحالة ومصور فوتوغرافي. أشارككم مغامراتي حول العالم.", postsCount: 250, followers: 5200, following: 150, comments: [] },
@@ -704,9 +884,17 @@
 
 
             // --- Initial Setup ---
+            auth.signInAnonymously() 
+                .then(() => {
+                    console.log("User signed in anonymously (mock)");
+                })
+                .catch((error) => {
+                    console.error("Anonymous sign-in failed (mock):", error);
+                });
+
             setTimeout(() => { splashScreen.classList.add('hidden'); }, 2800);
             setActiveSection('home-section'); 
-            loadDarkModePreference();
+            loadPreferences();
             initializeSounds();
             populateCurrentUserProfile(); 
             updateUnreadMessagesBadge();
@@ -714,18 +902,25 @@
             populateZowarSpaces(); 
             populateGeoRooms(); 
             populateActiveUsersInMessages();
+            updateTutoringRoleToggleVisuals(); 
 
             // --- UI Population & Event Listeners ---
             navItems.forEach(item => {
                 item.addEventListener('click', () => {
                     playUiClickSound();
                     const sectionId = item.dataset.section;
-                    setActiveSection(sectionId, sectionId === "create-post-section");
+                    setActiveSection(sectionId); 
                     if (sectionId === 'profile-section' && item.dataset.userId === 'currentUser') {
                         populateCurrentUserProfile();
                     }
                 });
             });
+            if(triggerCreatePostBtn) { 
+                triggerCreatePostBtn.addEventListener('click', () => {
+                    playUiClickSound();
+                    setActiveSection('create-post-section', true); 
+                });
+            }
             
             messagesHeaderBtn.addEventListener('click', () => {
                 playUiClickSound();
@@ -748,15 +943,15 @@
             // --- Sound Initialization & Playback ---
             function initializeSounds() {
                 try {
-                    uiClickSynth = new Tone.PluckSynth({ volume: masterVolume + 8, attackNoise: 0.05, dampening: 5000, resonance: 0.01 }).toDestination(); // Softer click
-                    notificationSynth = new Tone.Synth({ oscillator: { type: "sine" }, envelope: { attack: 0.01, decay: 0.12, sustain: 0.05, release: 0.3 }, volume: masterVolume - 2 }).toDestination(); // Softer notification
-                    messageSendSynth = new Tone.Synth({ oscillator: { type: "triangle" }, envelope: { attack: 0.005, decay: 0.08, sustain: 0.01, release: 0.1 }, volume: masterVolume + 2 }).toDestination(); // Slightly different send
-                    postSentSynth = new Tone.Synth({ oscillator: {type: "amsine", harmonicity: 1.2 }, envelope: { attack: 0.02, decay: 0.25, sustain: 0.05, release: 0.35 }, volume: masterVolume -1 }).toDestination(); // More positive post sent
+                    uiClickSynth = new Tone.PluckSynth({ volume: masterVolume + 8, attackNoise: 0.05, dampening: 5000, resonance: 0.01 }).toDestination(); 
+                    notificationSynth = new Tone.Synth({ oscillator: { type: "sine" }, envelope: { attack: 0.01, decay: 0.12, sustain: 0.05, release: 0.3 }, volume: masterVolume - 2 }).toDestination(); 
+                    messageSendSynth = new Tone.Synth({ oscillator: { type: "triangle" }, envelope: { attack: 0.005, decay: 0.08, sustain: 0.01, release: 0.1 }, volume: masterVolume + 2 }).toDestination(); 
+                    postSentSynth = new Tone.Synth({ oscillator: {type: "amsine", harmonicity: 1.2 }, envelope: { attack: 0.02, decay: 0.25, sustain: 0.05, release: 0.35 }, volume: masterVolume -1 }).toDestination(); 
                     gameSelectSynth = new Tone.Synth({ oscillator: {type: "pulse", width: 0.6}, envelope: { attack: 0.01, decay: 0.1, sustain:0.05, release: 0.2}, volume: masterVolume }).toDestination();
                     diceRollSynth = new Tone.NoiseSynth({ noise: { type: "pink" }, envelope: { attack: 0.005, decay: 0.15, sustain: 0 }, volume: masterVolume -5 }).toDestination();
-                    basketballShootSynth = new Tone.Synth({ oscillator: {type: "sawtooth"}, envelope: {attack:0.01, decay:0.1, sustain:0.05, release:0.1}, volume: masterVolume -3}).toDestination(); // Swoosh
-                    quizCorrectSynth = new Tone.Synth({ oscillator: {type: "triangle"}, envelope: {attack:0.01, decay:0.1, sustain:0.1, release:0.1}, volume: masterVolume }).toDestination(); // Bright
-                    quizWrongSynth = new Tone.Synth({ oscillator: {type: "square"}, envelope: {attack:0.01, decay:0.2, sustain:0, release:0.1}, volume: masterVolume -3 }).toDestination(); // Buzzer like
+                    basketballShootSynth = new Tone.Synth({ oscillator: {type: "sawtooth"}, envelope: {attack:0.01, decay:0.1, sustain:0.05, release:0.1}, volume: masterVolume -3}).toDestination(); 
+                    quizCorrectSynth = new Tone.Synth({ oscillator: {type: "triangle"}, envelope: {attack:0.01, decay:0.1, sustain:0.1, release:0.1}, volume: masterVolume }).toDestination(); 
+                    quizWrongSynth = new Tone.Synth({ oscillator: {type: "square"}, envelope: {attack:0.01, decay:0.2, sustain:0, release:0.1}, volume: masterVolume -3 }).toDestination(); 
 
 
                     callRingingSynth = new Tone.Loop(time => { 
@@ -770,6 +965,7 @@
                 } catch (err) { console.warn("Tone.js synths could not be initialized.", err); }
             }
             function playSound(synth, note, duration) { 
+                if (!soundsEnabled) return; 
                 if (synth && Tone.context.state === 'running') {
                     try { synth.triggerAttackRelease(note, duration); } catch (e) { console.warn("Sound play failed", e); }
                 } else if (synth && Tone.context.state !== 'running') {
@@ -781,39 +977,114 @@
             function playMessageSendSound() { playSound(messageSendSynth, "B5", "50n"); }
             function playPostSentSound() { playSound(postSentSynth, "D5", "6n"); }
             function playGameSelectSound() { playSound(gameSelectSynth, "F#4", "16n"); }
-            function playDiceRollSound() { if (diceRollSynth && Tone.context.state === 'running') diceRollSynth.triggerAttackRelease("0.15"); else if (diceRollSynth) Tone.start().then(()=>diceRollSynth.triggerAttackRelease("0.15")); }
-            function playBasketballShootSound() { playSound(basketballShootSynth, "C4", "8n"); setTimeout(() => playSound(basketballShootSynth, "G3", "8n"), 80); } // Swoosh down
+            function playDiceRollSound() { if (soundsEnabled && diceRollSynth && Tone.context.state === 'running') diceRollSynth.triggerAttackRelease("0.15"); else if (soundsEnabled && diceRollSynth) Tone.start().then(()=>diceRollSynth.triggerAttackRelease("0.15")); }
+            function playBasketballShootSound() { playSound(basketballShootSynth, "C4", "8n"); setTimeout(() => playSound(basketballShootSynth, "G3", "8n"), 80); } 
             function playQuizCorrectSound() { playSound(quizCorrectSynth, "C5", "16n"); setTimeout(()=> playSound(quizCorrectSynth, "E5", "16n"),100); setTimeout(()=> playSound(quizCorrectSynth, "G5", "16n"),200);}
             function playQuizWrongSound() { playSound(quizWrongSynth, "C3", "4n");}
 
-            function startCallRingingSound() { if (callRingingSynth && Tone.context.state === 'running') callRingingSynth.start(0); else if (callRingingSynth) Tone.start().then(()=>callRingingSynth.start(0));}
+            function startCallRingingSound() { if (soundsEnabled && callRingingSynth && Tone.context.state === 'running') callRingingSynth.start(0); else if (soundsEnabled && callRingingSynth) Tone.start().then(()=>callRingingSynth.start(0));}
             function stopCallRingingSound() { if (callRingingSynth) callRingingSynth.stop(0); }
-            function startCallingProgressSound() { if (callingProgressSynth && Tone.context.state === 'running') callingProgressSynth.start(0); else if(callingProgressSynth) Tone.start().then(()=>callingProgressSynth.start(0));}
+            function startCallingProgressSound() { if (soundsEnabled && callingProgressSynth && Tone.context.state === 'running') callingProgressSynth.start(0); else if(soundsEnabled && callingProgressSynth) Tone.start().then(()=>callingProgressSynth.start(0));}
             function stopCallingProgressSound() { if (callingProgressSynth) callingProgressSynth.stop(0); }
             document.body.addEventListener('click', () => {
                 if (Tone.context.state !== 'running') { Tone.start().catch(e => console.warn("Tone.start() on body click failed", e)); }
             }, { once: true });
 
-            // --- Dark Mode ---
-            function loadDarkModePreference() {
+            // --- Preferences (Dark Mode, Sound, Tutoring Role) ---
+            function loadPreferences() {
+                // Dark Mode
                 if (localStorage.getItem('darkModeZowar') === 'true' || (!localStorage.getItem('darkModeZowar') && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)) { 
                     document.body.classList.add('dark-mode');
-                    const toggleButton = getEl('dark-mode-toggle'); // Get button directly
-                    if (toggleButton) { // Check if button exists
-                        const span = toggleButton.querySelector('span');
+                    if (darkModeToggleBtn) { 
+                        const span = darkModeToggleBtn.querySelector('span');
                         if (span) span.style.transform = 'translateX(1.75rem)';
                     }
                 }
+                // Sound Toggle
+                const savedSoundPref = localStorage.getItem('soundsEnabledZowar');
+                soundsEnabled = savedSoundPref !== null ? JSON.parse(savedSoundPref) : true;
+                if (soundToggleSpan) {
+                    soundToggleSpan.style.transform = soundsEnabled ? 'translateX(1.75rem)' : 'translateX(0px)';
+                    if (soundToggleBtn) {
+                         soundToggleBtn.classList.toggle('bg-[var(--accent-secondary-global)]', soundsEnabled);
+                         soundToggleBtn.classList.toggle('dark:bg-[var(--dark-accent-secondary-global)]', soundsEnabled && document.body.classList.contains('dark-mode'));
+                         soundToggleBtn.classList.toggle('bg-gray-300', !soundsEnabled);
+                         soundToggleBtn.classList.toggle('dark:bg-gray-600', !soundsEnabled && document.body.classList.contains('dark-mode'));
+                    }
+                }
+                // Tutoring Role
+                currentTutoringRole = localStorage.getItem('tutoringRoleZowar') || 'student';
+                updateTutoringRoleToggleVisuals();
+                if (tutoringRoleSelection) { 
+                     if (currentTutoringRole === 'teacher') {
+                        tutoringRoleSelection.style.display = 'none';
+                        tutoringTeacherView.style.display = 'block';
+                    } else {
+                        tutoringRoleSelection.style.display = 'none';
+                        tutoringStudentView.style.display = 'block';
+                    }
+                }
             }
+
             darkModeToggleBtn.addEventListener('click', () => {
                 playUiClickSound();
                 document.body.classList.toggle('dark-mode');
                 const span = darkModeToggleBtn.querySelector('span');
-                if (span) { // Add null check for span as well
+                if (span) {
                     span.style.transform = document.body.classList.contains('dark-mode') ? 'translateX(1.75rem)' : 'translateX(0px)';
                 }
                 localStorage.setItem('darkModeZowar', document.body.classList.contains('dark-mode'));
+                const activeSection = document.querySelector('.section.active, .view.active');
+                if (activeSection) setActiveSection(activeSection.id); 
             });
+
+            if (soundToggleBtn) {
+                soundToggleBtn.addEventListener('click', () => {
+                    soundsEnabled = !soundsEnabled;
+                    if (soundToggleSpan) soundToggleSpan.style.transform = soundsEnabled ? 'translateX(1.75rem)' : 'translateX(0px)';
+                    soundToggleBtn.classList.toggle('bg-[var(--accent-secondary-global)]', soundsEnabled);
+                    soundToggleBtn.classList.toggle('dark:bg-[var(--dark-accent-secondary-global)]', soundsEnabled && document.body.classList.contains('dark-mode'));
+                    soundToggleBtn.classList.toggle('bg-gray-300', !soundsEnabled);
+                    soundToggleBtn.classList.toggle('dark:bg-gray-600', !soundsEnabled && document.body.classList.contains('dark-mode'));
+                    localStorage.setItem('soundsEnabledZowar', soundsEnabled);
+                    playUiClickSound(); 
+                    showAlert(soundsEnabled ? "تم تفعيل الأصوات" : "تم إيقاف الأصوات", "info");
+                });
+            }
+
+            function updateTutoringRoleToggleVisuals() {
+                const studentBtnSettings = getEl('role-student-settings-btn');
+                const teacherBtnSettings = getEl('role-teacher-settings-btn');
+                const studentBtnMain = getEl('iam-student-btn');
+                const teacherBtnMain = getEl('iam-teacher-btn');
+
+                if (currentTutoringRole === 'teacher') {
+                    teacherBtnMain?.classList.add('active-role'); studentBtnMain?.classList.remove('active-role');
+                    teacherBtnSettings?.classList.add('active-role'); studentBtnSettings?.classList.remove('active-role');
+                } else {
+                    studentBtnMain?.classList.add('active-role'); teacherBtnMain?.classList.remove('active-role');
+                    studentBtnSettings?.classList.add('active-role'); teacherBtnSettings?.classList.remove('active-role');
+                }
+            }
+
+
+            function setTutoringRole(role) {
+                playUiClickSound();
+                currentTutoringRole = role;
+                localStorage.setItem('tutoringRoleZowar', role);
+                updateTutoringRoleToggleVisuals();
+                if (tutoringRoleSelection) tutoringRoleSelection.style.display = 'none';
+                if (tutoringStudentView) tutoringStudentView.style.display = role === 'student' ? 'block' : 'none';
+                if (tutoringTeacherView) tutoringTeacherView.style.display = role === 'teacher' ? 'block' : 'none';
+                if (tutoringSubjectDetails) tutoringSubjectDetails.style.display = 'none';
+                if (teacherPublishLessonArea) teacherPublishLessonArea.style.display = 'none';
+
+            }
+            if(iamStudentBtn) iamStudentBtn.addEventListener('click', () => setTutoringRole('student'));
+            if(iamTeacherBtn) iamTeacherBtn.addEventListener('click', () => setTutoringRole('teacher'));
+            if(roleStudentSettingsBtn) roleStudentSettingsBtn.addEventListener('click', () => setTutoringRole('student'));
+            if(roleTeacherSettingsBtn) roleTeacherSettingsBtn.addEventListener('click', () => setTutoringRole('teacher'));
+
 
             // --- Alert Banner ---
             function showAlert(message, type = 'info') { 
@@ -993,7 +1264,7 @@
             if(closePostCommentsModalBtn) closePostCommentsModalBtn.addEventListener('click', () => { playUiClickSound(); postCommentsModal.classList.remove('active'); });
 
             // --- Create Post Modal ---
-            nextToTextOverlayBtn.addEventListener('click', () => {
+            if(nextToTextOverlayBtn) nextToTextOverlayBtn.addEventListener('click', () => {
                 playUiClickSound();
                 const file = mediaUploadInput.files[0];
                 if (file) {
@@ -1018,13 +1289,13 @@
                     showAlert("الرجاء اختيار ملف صورة أو فيديو أولاً.", "error");
                 }
             });
-            backToMediaUploadBtn.addEventListener('click', () => {
+            if(backToMediaUploadBtn) backToMediaUploadBtn.addEventListener('click', () => {
                 playUiClickSound();
                 createPostStep2.style.display = 'none';
                 createPostStep1.style.display = 'block';
                 previewTextOverlay.style.display = 'none'; 
             });
-            postTextInput.addEventListener('input', (e) => {
+            if(postTextInput) postTextInput.addEventListener('input', (e) => {
                 const text = e.target.value;
                 if (text.trim() !== '') {
                     previewTextOverlay.textContent = text;
@@ -1033,7 +1304,7 @@
                     previewTextOverlay.style.display = 'none';
                 }
             });
-            generateCaptionBtn.addEventListener('click', async () => {
+            if(generateCaptionBtn) generateCaptionBtn.addEventListener('click', async () => {
                 playUiClickSound();
                 captionLoadingSpinner.style.display = 'block';
                 generateCaptionBtn.disabled = true;
@@ -1055,7 +1326,7 @@
                     generateCaptionBtn.disabled = false;
                 }
             });
-            submitPostBtn.addEventListener('click', () => {
+            if(submitPostBtn) submitPostBtn.addEventListener('click', () => {
                 const caption = postCaptionInput.value.trim();
                 const textOverlay = postTextInput.value.trim();
                 const currentUser = mockUsers.find(u => u.id === "currentUser");
@@ -1227,10 +1498,14 @@
             // --- User Profiles & Search ---
             function populateUserProfile(userId, containerElement) {
                 const user = mockUsers.find(u => u.id === userId);
-                if (!user) { containerElement.innerHTML = '<p>لم يتم العثور على المستخدم.</p>'; return; }
+                 if (!user || !containerElement) { 
+                    if(containerElement) containerElement.innerHTML = '<p>لم يتم العثور على المستخدم.</p>'; 
+                    return; 
+                }
+
 
                 let profileHTML = `
-                    <div class="profile-header-bg"></div>
+                    <div class="profile-header-bg" style="background: var(${document.body.classList.contains('dark-mode') ? '--dark-profile-accent' : '--profile-accent'});"></div>
                     <div class="p-4 profile-avatar-container">
                         <div class="text-center">
                             <div class="relative inline-block profile-avatar">
@@ -1258,6 +1533,10 @@
                             <span>عرض تعليقاتي اليومية</span> <span class="text-gray-400 dark:text-gray-500">📝</span>
                         </button>
                         <div id="my-daily-comments-list" class="mt-3 p-3 bg-gray-50 dark:bg-gray-700/30 rounded-lg space-y-2" style="display:none;"></div>
+                        <button id="who-searched-me-btn" class="w-full p-3.5 bg-gray-100 dark:bg-gray-700 dark:hover:bg-gray-600 hover:bg-gray-200 rounded-lg text-gray-700 dark:text-gray-200 font-semibold flex items-center justify-between text-sm transition-colors">
+                            <span>من بحث عني؟</span> <span class="text-gray-400 dark:text-gray-500">👀</span>
+                        </button>
+                        <div id="who-searched-me-list" class="mt-3 p-3 bg-gray-50 dark:bg-gray-700/30 rounded-lg space-y-2" style="display:none;"></div>
                         <button id="settings-btn-profile" class="w-full p-3.5 bg-gray-100 dark:bg-gray-700 dark:hover:bg-gray-600 hover:bg-gray-200 rounded-lg text-gray-700 dark:text-gray-200 font-semibold flex items-center justify-between text-sm transition-colors">
                             <span>الإعدادات والتفضيلات</span> <span class="text-gray-400 dark:text-gray-500">⚙</span>
                         </button>
@@ -1281,6 +1560,7 @@
                     });
                     getEl('view-my-comments-btn')?.addEventListener('click', toggleMyDailyComments);
                     getEl('generate-bio-btn')?.addEventListener('click', generateAiBio);
+                    getEl('who-searched-me-btn')?.addEventListener('click', toggleWhoSearchedMe);
                 } else {
                     containerElement.querySelector('.block-user-btn')?.addEventListener('click', (e) => {
                         playUiClickSound();
@@ -1314,6 +1594,33 @@
                     commentsListDiv.style.display = 'none';
                 }
             }
+             function toggleWhoSearchedMe() {
+                playUiClickSound();
+                const whoSearchedListDiv = getEl('who-searched-me-list');
+                if (whoSearchedListDiv.style.display === 'none') {
+                    whoSearchedListDiv.innerHTML = ''; 
+                    const searchers = mockUsers.filter(u => u.id !== "currentUser").slice(0, Math.floor(Math.random() * 3) + 1); 
+                    if (searchers.length > 0) {
+                        searchers.forEach(user => {
+                            const userEl = document.createElement('div');
+                            userEl.className = 'user-search-item p-2.5'; 
+                            userEl.innerHTML = `
+                                <img src="${user.avatar}" alt="${user.displayName}" class="w-8 h-8 rounded-full">
+                                <div>
+                                    <h4 class="font-semibold text-xs text-gray-800 dark:text-gray-200">${user.displayName}</h4>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400">@${user.username}</p>
+                                </div>`;
+                            whoSearchedListDiv.appendChild(userEl);
+                        });
+                    } else {
+                        whoSearchedListDiv.innerHTML = '<p class="text-xs text-center text-gray-500 dark:text-gray-400 py-2">لا أحد بحث عنك مؤخرًا.</p>';
+                    }
+                    whoSearchedListDiv.style.display = 'block';
+                } else {
+                    whoSearchedListDiv.style.display = 'none';
+                }
+            }
+
 
             openSearchModalBtn.addEventListener('click', () => { playUiClickSound(); searchModal.classList.add('active'); userSearchInput.focus(); });
             closeSearchModalBtn.addEventListener('click', () => { playUiClickSound(); searchModal.classList.remove('active'); });
@@ -1441,7 +1748,7 @@
              }
 
             async function fetchSmartReplies(lastMessage) {
-                if (!lastMessage || !smartReplyContainer) { smartReplyContainer.style.display = 'none'; return; }
+                if (!lastMessage || !smartReplyContainer) { if(smartReplyContainer) smartReplyContainer.style.display = 'none'; return; }
                 smartReplyContainer.innerHTML = '<p class="text-xs text-gray-400 dark:text-gray-500 py-1">✨ جاري توليد ردود ذكية...</p>';
                 smartReplyContainer.style.display = 'flex'; 
 
@@ -1562,7 +1869,7 @@
             }
 
             function openGameLobby(gameType) {
-                setActiveSection(null); // Hide other main sections
+                setActiveSection(null); 
                 gameLobbyView.classList.add('active');
                 let gameName = "";
                 let specificUIHTML = "";
@@ -1634,7 +1941,6 @@
                 gameLobbyTitle.textContent = gameName;
                 gameSpecificUI.innerHTML = specificUIHTML;
 
-                // Add event listeners for game-specific UI if any
                 if (gameType === 'ludo' && getEl('roll-ludo-dice-btn')) {
                     getEl('roll-ludo-dice-btn').onclick = () => rollDice('ludo-dice');
                 }
@@ -1657,17 +1963,14 @@
                 const dice = getEl(diceId);
                 if (!dice) return;
                 const randomNumber = Math.floor(Math.random() * 6) + 1;
-                let xRand = (Math.floor(Math.random() * 4) + 1) * 90; // Random rotation multiple of 90
+                let xRand = (Math.floor(Math.random() * 4) + 1) * 90; 
                 let yRand = (Math.floor(Math.random() * 4) + 1) * 90;
-                
-                // This is a simplified way to show the face, not true 3D face alignment
                 dice.style.transform = `rotateX(${xRand}deg) rotateY(${yRand}deg)`;
-                
                 setTimeout(() => {
                     const faces = dice.querySelectorAll('.dice-face');
                     faces.forEach(f => f.style.fontWeight = 'normal');
                     const targetFace = dice.querySelector(`.face-${randomNumber}`);
-                    if(targetFace) targetFace.style.fontWeight = 'bold'; // Highlight the "rolled" number
+                    if(targetFace) targetFace.style.fontWeight = 'bold'; 
                      showAlert(`لقد رميت ${randomNumber}!`, 'info');
                 }, 1000);
             }
@@ -1706,20 +2009,68 @@
 
                 players.forEach((player, index) => {
                     const playerDiv = document.createElement('div');
-                    playerDiv.className = 'game-lobby-player text-white'; // Ensure text color is visible on dark lobby bg
+                    playerDiv.className = 'game-lobby-player text-gray-800 dark:text-gray-100'; 
                     playerDiv.innerHTML = `
                         <img src="${player.avatar}" alt="${player.displayName}">
                         <span>${player.displayName} ${index === 0 ? '(أنت)' : ''}</span>
-                        ${index > 0 ? '<button class="text-xs text-red-300 hover:text-red-100 mr-auto rtl:ml-auto rtl:mr-0">إزالة</button>' : ''}`;
+                        ${index > 0 ? '<button class="text-xs text-red-400 hover:text-red-600 dark:text-red-500 dark:hover:text-red-300 mr-auto rtl:ml-auto rtl:mr-0">إزالة</button>' : ''}`;
                     gameLobbyPlayers.appendChild(playerDiv);
+                });
+            }
+
+             // --- Tutoring Section Logic ---
+            if (tutoringSection) {
+                iamStudentBtn.addEventListener('click', () => {
+                    playUiClickSound();
+                    tutoringRoleSelection.style.display = 'none';
+                    tutoringStudentView.style.display = 'block';
+                    tutoringTeacherView.style.display = 'none';
+                    tutoringSubjectDetails.style.display = 'none';
+                    iamStudentBtn.classList.add('active-role');
+                    iamTeacherBtn.classList.remove('active-role');
+                    iamTeacherBtn.style.backgroundColor = ''; 
+                    iamTeacherBtn.style.color = '';
+                    iamTeacherBtn.style.borderColor = '';
+
+                });
+                iamTeacherBtn.addEventListener('click', () => {
+                    playUiClickSound();
+                    tutoringRoleSelection.style.display = 'none';
+                    tutoringStudentView.style.display = 'none';
+                    tutoringTeacherView.style.display = 'block';
+                    teacherPublishLessonArea.style.display = 'none';
+                    tutoringSubjectDetails.style.display = 'none';
+                    iamTeacherBtn.classList.add('active-role');
+                    iamStudentBtn.classList.remove('active-role');
+                    iamStudentBtn.style.backgroundColor = ''; 
+                    iamStudentBtn.style.color = '';
+                    iamStudentBtn.style.borderColor = '';
+                });
+
+                querySelAll('#tutoring-student-view .tutoring-card, #teacher-subject-selection .tutoring-card').forEach(card => {
+                    card.addEventListener('click', (e) => {
+                        playUiClickSound();
+                        const subjectName = card.querySelector('h3').textContent;
+                        const isTeacherFlow = tutoringTeacherView.style.display === 'block';
+
+                        if (isTeacherFlow) {
+                            teacherSelectedSubjectEl.textContent = `التدريس في: ${subjectName}`;
+                            teacherPublishLessonArea.style.display = 'block';
+                            tutoringSubjectDetails.style.display = 'none';
+                        } else { 
+                            tutoringSubjectTitle.textContent = subjectName;
+                            tutoringSubjectContent.textContent = `محتوى تعليمي لـ ${subjectName} سيظهر هنا قريباً. يمكنك استكشاف الدروس، الفيديوهات، أو التواصل مع مدرسين متخصصين. (هذه محاكاة).`;
+                            tutoringSubjectDetails.style.display = 'block';
+                            tutoringSubjectDetails.scrollIntoView({behavior: 'smooth'});
+                        }
+                    });
                 });
             }
 
 
             // --- Helper to set active section and hide others ---
             function setActiveSection(sectionId, isModalTrigger = false) {
-                // Remove theme classes from body first
-                document.body.classList.remove('home-section-theme', 'explore-section-theme', 'games-section-theme', 'profile-section-theme', 'messages-view-theme');
+                document.body.className = localStorage.getItem('darkModeZowar') === 'true' ? 'dark-mode' : ''; 
 
                 if (!isModalTrigger || (isModalTrigger && !getEl(sectionId)?.classList.contains('modal-like-section'))) {
                     sections.forEach(s => s.classList.remove('active'));
@@ -1734,10 +2085,13 @@
                     const targetElement = getEl(sectionId);
                     if (targetElement) {
                         targetElement.classList.add('active');
-                        // Add section specific class to body for theming
+                        // Ensure the main-content itself doesn't scroll, only the active section/view
+                        // This is handled by setting overflow-y: auto on .section and .view
+                        // and overflow:hidden on .main-content
+                        
+                        // Apply section-specific theme to body for global styling overrides if needed
                         document.body.classList.add(`${sectionId}-theme`); 
                         
-                        // Update nav item active colors based on section
                         navItems.forEach(item => {
                             const itemSection = item.dataset.section;
                             const isActive = itemSection === sectionId;
@@ -1746,28 +2100,31 @@
                             const text = item.querySelector('.nav-text');
                             
                             if(icon && text) {
-                                let activeColorVar = `--${sectionId.split('-')[0]}-accent`;
-                                if (document.body.classList.contains('dark-mode')) {
-                                    activeColorVar = `--dark-${sectionId.split('-')[0]}-accent`;
+                                let sectionBaseName = sectionId.split('-')[0]; 
+                                let activeColorVarName = `--${sectionBaseName}-accent`;
+                                let activeColorVarNameDark = `--dark-${sectionBaseName}-accent`;
+                                
+                                let finalActiveColor = getComputedStyle(document.documentElement).getPropertyValue(activeColorVarName).trim();
+                                let finalActiveColorDark = getComputedStyle(document.documentElement).getPropertyValue(activeColorVarNameDark).trim();
+
+                                if (!finalActiveColor || finalActiveColor === "null" || finalActiveColor === "") {
+                                     finalActiveColor = `var(${document.body.classList.contains('dark-mode') ? '--dark-accent-primary-global' : '--accent-primary-global'})`;
                                 }
-                                // Use global accent if section-specific is not defined
-                                const finalActiveColor = getComputedStyle(document.documentElement).getPropertyValue(activeColorVar).trim() || (document.body.classList.contains('dark-mode') ? 'var(--dark-accent-primary-global)' : 'var(--accent-primary-global)');
-
-
+                                if (!finalActiveColorDark || finalActiveColorDark === "null" || finalActiveColorDark === "") {
+                                     finalActiveColorDark = 'var(--dark-accent-primary-global)';
+                                }
+                                
                                 if(isActive) {
-                                    icon.style.color = finalActiveColor;
-                                    text.style.color = finalActiveColor;
+                                    icon.style.color = document.body.classList.contains('dark-mode') ? finalActiveColorDark : finalActiveColor;
+                                    text.style.color = document.body.classList.contains('dark-mode') ? finalActiveColorDark : finalActiveColor;
                                 } else {
-                                    icon.style.color = ''; // Revert to default (handled by .nav-item color)
-                                    text.style.color = ''; // Revert to default
+                                    icon.style.color = ''; 
+                                    text.style.color = ''; 
                                 }
-                            }
-                             if (item.classList.contains('create-post-btn')) {
-                                 item.classList.toggle('create-post-btn-active', itemSection === "create-post-section" && sectionId === "create-post-section");
                             }
                         });
                     }
-                } else { // No section active (e.g. messages view is a top-level view now)
+                } else { // When a view like messagesView is active directly (not a main section from bottom nav)
                      navItems.forEach(item => {
                         item.classList.remove('active');
                         const icon = item.querySelector('.nav-icon');
@@ -1775,7 +2132,6 @@
                         if(icon) icon.style.color = '';
                         if(text) text.style.color = '';
                      });
-                     // If messagesView is active, theme it
                      if (messagesView.classList.contains('active')) {
                         document.body.classList.add('messages-view-theme');
                      }
